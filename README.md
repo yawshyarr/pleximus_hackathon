@@ -1,11 +1,10 @@
+<div align="center">
 
-- **Frontend** — single-file `index.html` (vanilla HTML/CSS/JS, zero build step), rendering the live chat thread with tool-call chips and result cards.
-- **Backend** — Flask (`app.py`) driving the tool-calling loop (`agent.py`) against the Gemini API.
-- **Tools** — plain Python functions in `tools/`, each paired with a function-calling schema so Gemini knows when to invoke it.
+# 🧰 Toolbox Agent Chat
 
-## 🛠️ Tech Stack
+**A tool-calling AI agent with a live chat UI — built for the Pleximus Inc. AI Hackathon**
 
-<div align="left">
+Ask it a question, watch it decide which tool to reach for, and see the call — and the result — rendered right in the conversation.
 
 ![Python](https://img.shields.io/badge/-Python-3776AB?style=flat-square&logo=python&logoColor=white)
 ![Flask](https://img.shields.io/badge/-Flask-000000?style=flat-square&logo=flask&logoColor=white)
@@ -16,10 +15,54 @@
 
 </div>
 
-- **LLM**: Google Gemini 2.5 Flash (function calling / tool use)
-- **Backend**: Python, Flask, flask-cors
-- **Frontend**: HTML, CSS, vanilla JavaScript
-- **External API**: Open-Meteo (weather + geocoding, no key required)
+---
+
+## 🎥 Demo
+
+| | |
+|---|---|
+| 🎬 **Full Demo** | [Watch on Google Drive](https://drive.google.com/file/d/1EW8zGfhj2f0OmWg7v04pbGUeSfHQXYaV/view?usp=drive_link) |
+| ⚡ **Quick Walkthrough** | [Watch on Google Drive](https://drive.google.com/file/d/1Zo7gpqrgHQ9j_ISKPvZ19uKFjsYVu6IS/view?usp=drive_link) |
+
+> Short on time? Start with the quick walkthrough — the full demo covers everything end to end.
+
+---
+
+## 📖 Overview
+
+Toolbox Agent Chat is a minimal but complete example of **function calling** done right: a Gemini-powered agent that reasons about a user's message, decides whether it needs a tool, calls it, reads the result, and loops until it has a real answer — all visualized live in the chat thread with tool-call chips and result cards.
+
+- **Frontend** — single-file `index.html` (vanilla HTML/CSS/JS, zero build step), rendering the live chat thread with tool-call chips and result cards.
+- **Backend** — Flask (`app.py`) driving the tool-calling loop (`agent.py`) against the Gemini API.
+- **Tools** — plain Python functions in `tools/`, each paired with a function-calling schema so Gemini knows when to invoke it.
+
+## ✨ Features
+
+- 🔁 **Full tool-calling loop** — chains multiple tool calls in one turn before replying
+- 💬 **Live tool-call visualization** — every call and result renders as a chip/card in the chat, not a hidden log
+- 🧮 **Safe expression evaluation** — AST-based calculator, no `eval()`
+- 🌦️ **Real weather data** — geocodes a city and pulls live conditions from Open-Meteo, no API key required
+- ⚖️ **Unit conversion** — length, weight, temperature, with common aliases (`meters`, `kilograms`, `Fahrenheit`, …)
+- ✍️ **Text utilities** — word count, char count, case conversion, reverse
+- 🚦 **Graceful rate-limit handling** — friendly message instead of a crash on the free Gemini tier
+
+## 🛠️ Tech Stack
+
+| Layer | Tech |
+|---|---|
+| LLM | Google Gemini (function calling / tool use) |
+| Backend | Python, Flask, flask-cors |
+| Frontend | HTML, CSS, vanilla JavaScript |
+| External API | Open-Meteo (weather + geocoding, no key required) |
+
+## 🧩 Available Tools
+
+| Tool | What it does |
+|---|---|
+| `calculate` | Evaluates a math expression (`+ - * / % **`) safely via AST parsing |
+| `text_utility` | `word_count`, `char_count`, `uppercase`, `lowercase`, `reverse` on a string |
+| `get_weather` | Looks up current temperature, humidity, and wind for a city |
+| `convert_units` | Converts between length, weight, or temperature units |
 
 ## 🚀 Setup
 
@@ -45,16 +88,23 @@ cp .env.example .env
 python app.py
 ```
 
-Server starts on `http://localhost:5001`. Confirm it's alive:
+Server starts on `http://localhost:5010`. Confirm it's alive:
 
 ```bash
-curl http://localhost:5001/health
+curl http://localhost:5010/health
 ```
 
 Then open `index.html` directly in your browser — it connects to the running backend automatically.
 
 ## 💬 Example Prompts
 
+- *"What's 18% of 245, then round it to the nearest whole number?"*
+- *"What's the weather in Tokyo right now?"*
+- *"Convert 5 miles to kilometers."*
+- *"How many words are in this sentence, and reverse it too."*
+- *"Convert 98.6°F to Celsius, then tell me the weather in that same rough climate somewhere in Europe."*
+
+Each of these triggers one or more tool calls you can watch happen live in the chat.
 
 ## ✅ Edge Cases Handled
 
@@ -62,6 +112,23 @@ Then open `index.html` directly in your browser — it connects to the running b
 - Unrecognized city names
 - Invalid or mismatched unit categories (e.g. converting kg to meters)
 - Empty or malformed API responses
+- Gemini free-tier rate limits (5 requests/min) — surfaced as a friendly message instead of a 500
+
+## 📁 Project Structure
+
+```
+toolbox-agent-chat/
+├── app.py              # Flask server — exposes /health and /chat
+├── agent.py            # Tool-calling loop against the Gemini API
+├── tools/
+│   ├── calculator.py
+│   ├── text_utility.py
+│   ├── weather.py
+│   └── unit_converter.py
+├── index.html           # Single-file chat frontend
+├── requirements.txt
+└── .env.example
+```
 
 ## 👤 Author
 
