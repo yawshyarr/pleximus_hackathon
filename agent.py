@@ -14,7 +14,7 @@ load_dotenv()
 
 genai.configure(api_key=os.environ["GEMINI_API_KEY"])
 
-model = genai.GenerativeModel("gemini-1.5-flash")
+model = genai.GenerativeModel("gemini-2.5-flash")
 
 log = logging.getLogger("agent")
 
@@ -112,7 +112,15 @@ def chat(user_message: str) -> dict:
     log.info("User message: %s", user_message)
 
     chat_session = model.start_chat(history=[])
-    response = chat_session.send_message(user_message, tools=TOOLS)
+    try:
+        response = chat_session.send_message(user_message, tools=TOOLS)
+    except Exception as e:
+        if "429" in str(e) or "Quota exceeded" in str(e) or "ResourceExhausted" in str(e):
+            return {
+                "reply": "⚠️ Whoops! We hit the free-tier API rate limit (5 requests per minute). Please wait a few seconds and try again!",
+                "tool_calls": []
+            }
+        raise e
 
     tool_calls_log = []
 
@@ -145,10 +153,19 @@ def chat(user_message: str) -> dict:
                 "result": result,
             })
 
-        response = chat_session.send_message(
-            response.candidates[0].content,
-            tools=TOOLS,
-        )
+        try:
+            response = chat_session.send_message(
+                response.candidates[0].content,
+                tools=TOOLS,
+            )
+        except Exception as e:
+            if "429" in str(e) or "Quota exceeded" in str(e) or "ResourceExhausted" in str(e):
+                reply = "⚠️ API Rate Limit (5 requests per min) hit mid-conversation. Here are the tools called so far."
+                return {
+                    "reply": reply,
+                    "tool_calls": tool_calls_log
+                }
+            raise e
 
     # Extract final text — try response.text first, fall back to parts
     reply = ""

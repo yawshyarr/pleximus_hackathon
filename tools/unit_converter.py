@@ -25,10 +25,10 @@ _CATEGORIES = {
 }
 
 _ALIASES = {
-    "meter": "m", "meters": "m",
-    "kilometer": "km", "kilometers": "km",
-    "centimeter": "cm", "centimeters": "cm",
-    "millimeter": "mm", "millimeters": "mm",
+    "meter": "m", "meters": "m", "metre": "m", "metres": "m",
+    "kilometer": "km", "kilometers": "km", "kilometre": "km", "kilometres": "km",
+    "centimeter": "cm", "centimeters": "cm", "centimetre": "cm", "centimetres": "cm",
+    "millimeter": "mm", "millimeters": "mm", "millimetre": "mm", "millimetres": "mm",
     "mile": "mi", "miles": "mi",
     "yard": "yd", "yards": "yd",
     "inch": "in", "inches": "in",
