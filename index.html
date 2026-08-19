@@ -67,13 +67,27 @@
         -webkit-font-smoothing: antialiased;
       }
 
+      /* --- MOLTEN METAL BACKGROUND --- */
+      #root {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+      }
+
+      #root > div {
+        width: 100%;
+        height: 100%;
+      }
+
       /* --- APP CONTAINER --- */
       #app-container {
+        position: relative;
+        z-index: 1;
         width: 100%;
         max-width: 900px;
         height: 92vh;
         max-height: 860px;
-        background: var(--bg-card);
+        background: rgba(17, 24, 39, 0.92);
         border: 1px solid var(--border-card);
         border-radius: var(--radius-lg);
         display: flex;
@@ -569,6 +583,9 @@
     </style>
   </head>
   <body>
+    <!-- MOLTEN METAL BACKGROUND (React) -->
+    <div id="root"></div>
+
     <!-- APP CONTAINER -->
     <div id="app-container">
       
@@ -674,7 +691,7 @@ def chat_endpoint(req: ChatRequest):
       
       // Set this to false when wiring up your Python backend!
       const USE_MOCK_BACKEND = false;
-      const PYTHON_BACKEND_URL = "http://localhost:5008/chat";
+      const PYTHON_BACKEND_URL = "http://localhost:5010/chat";
 
       const chatMessages = document.getElementById("chat-messages");
       const chatForm = document.getElementById("chat-form");
@@ -1132,6 +1149,8 @@ def chat_endpoint(req: ChatRequest):
         userInput.focus();
       });
     </script>
+
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
 

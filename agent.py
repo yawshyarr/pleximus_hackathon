@@ -1,7 +1,8 @@
 import logging
+import json
 
-import google.generativeai as genai
-from google.generativeai import protos
+from google import genai
+from google.genai import types
 from dotenv import load_dotenv
 import os
 
@@ -12,38 +13,33 @@ from tools.unit_converter import convert_units
 
 load_dotenv()
 
-genai.configure(api_key=os.environ["GEMINI_API_KEY"])
-
-model = genai.GenerativeModel("gemini-2.5-flash")
+client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
 
 log = logging.getLogger("agent")
 
-# --- Tool schemas using protos ---
+# --- Tool function declarations ---
 
-SCHEMA = protos.Schema
-TYPE = protos.Type
-
-CALCULATOR_DECL = protos.FunctionDeclaration(
+CALCULATOR_FUNC = types.FunctionDeclaration(
     name="calculate",
     description="Evaluate a math expression. Supports +, -, *, /, %, ** (power). No variables or functions.",
-    parameters=SCHEMA(
-        type_=TYPE.OBJECT,
+    parameters=types.Schema(
+        type=types.Type.OBJECT,
         properties={
-            "expression": SCHEMA(type_=TYPE.STRING, description="The math expression to evaluate, e.g. '2 + 3 * 4'"),
+            "expression": types.Schema(type=types.Type.STRING, description="The math expression to evaluate, e.g. '2 + 3 * 4'"),
         },
         required=["expression"],
     ),
 )
 
-TEXT_UTILITY_DECL = protos.FunctionDeclaration(
+TEXT_UTILITY_FUNC = types.FunctionDeclaration(
     name="text_utility",
     description="Perform a text operation on a string.",
-    parameters=SCHEMA(
-        type_=TYPE.OBJECT,
+    parameters=types.Schema(
+        type=types.Type.OBJECT,
         properties={
-            "text": SCHEMA(type_=TYPE.STRING, description="The input text."),
-            "operation": SCHEMA(
-                type_=TYPE.STRING,
+            "text": types.Schema(type=types.Type.STRING, description="The input text."),
+            "operation": types.Schema(
+                type=types.Type.STRING,
                 enum=["word_count", "char_count", "uppercase", "lowercase", "reverse"],
                 description="The operation to perform.",
             ),
@@ -52,29 +48,29 @@ TEXT_UTILITY_DECL = protos.FunctionDeclaration(
     ),
 )
 
-WEATHER_DECL = protos.FunctionDeclaration(
+WEATHER_FUNC = types.FunctionDeclaration(
     name="get_weather",
     description="Look up the current weather for a city using the Open-Meteo API.",
-    parameters=SCHEMA(
-        type_=TYPE.OBJECT,
+    parameters=types.Schema(
+        type=types.Type.OBJECT,
         properties={
-            "city": SCHEMA(type_=TYPE.STRING, description="City name, e.g. 'London' or 'Tokyo'."),
+            "city": types.Schema(type=types.Type.STRING, description="City name, e.g. 'London' or 'Tokyo'."),
         },
         required=["city"],
     ),
 )
 
-CONVERT_UNITS_DECL = protos.FunctionDeclaration(
+CONVERT_UNITS_FUNC = types.FunctionDeclaration(
     name="convert_units",
     description="Convert a value between units. Supports length (m, km, cm, mm, mi, yd, in), weight (kg, g, mg, lb, oz), and temperature (C, F, K).",
-    parameters=SCHEMA(
-        type_=TYPE.OBJECT,
+    parameters=types.Schema(
+        type=types.Type.OBJECT,
         properties={
-            "value": SCHEMA(type_=TYPE.NUMBER, description="The numeric value to convert."),
-            "from_unit": SCHEMA(type_=TYPE.STRING, description="The source unit, e.g. 'kg', 'miles', 'Fahrenheit'."),
-            "to_unit": SCHEMA(type_=TYPE.STRING, description="The target unit, e.g. 'lb', 'km', 'C'."),
-            "category": SCHEMA(
-                type_=TYPE.STRING,
+            "value": types.Schema(type=types.Type.NUMBER, description="The numeric value to convert."),
+            "from_unit": types.Schema(type=types.Type.STRING, description="The source unit, e.g. 'kg', 'miles', 'Fahrenheit'."),
+            "to_unit": types.Schema(type=types.Type.STRING, description="The target unit, e.g. 'lb', 'km', 'C'."),
+            "category": types.Schema(
+                type=types.Type.STRING,
                 enum=["length", "weight", "temperature"],
                 description="The conversion category.",
             ),
@@ -83,14 +79,12 @@ CONVERT_UNITS_DECL = protos.FunctionDeclaration(
     ),
 )
 
-TOOLS = [protos.Tool(function_declarations=[
-    CALCULATOR_DECL,
-    TEXT_UTILITY_DECL,
-    WEATHER_DECL,
-    CONVERT_UNITS_DECL,
-])]
-
-# --- Dispatch map: name -> callable ---
+TOOLS = types.Tool(function_declarations=[
+    CALCULATOR_FUNC,
+    TEXT_UTILITY_FUNC,
+    WEATHER_FUNC,
+    CONVERT_UNITS_FUNC,
+])
 
 TOOL_DISPATCH = {
     "calculate": lambda args: calculate(args["expression"]),
@@ -102,31 +96,41 @@ TOOL_DISPATCH = {
 }
 
 
-def _has_function_call(candidate) -> bool:
+def _has_function_call(response) -> bool:
+    if not response.candidates:
+        return False
+    candidate = response.candidates[0]
     if not candidate.content or not candidate.content.parts:
         return False
-    return any(hasattr(p, "function_call") and p.function_call for p in candidate.content.parts)
+    return any(p.function_call for p in candidate.content.parts if p.function_call)
 
 
 def chat(user_message: str) -> dict:
     log.info("User message: %s", user_message)
 
-    chat_session = model.start_chat(history=[])
+    contents = [types.Content(role="user", parts=[types.Part(text=user_message)])]
+
     try:
-        response = chat_session.send_message(user_message, tools=TOOLS)
+        response = client.models.generate_content(
+            model="gemini-3.5-flash",
+            contents=contents,
+            config=types.GenerateContentConfig(tools=[TOOLS]),
+        )
     except Exception as e:
         if "429" in str(e) or "Quota exceeded" in str(e) or "ResourceExhausted" in str(e):
             return {
-                "reply": "⚠️ Whoops! We hit the free-tier API rate limit (5 requests per minute). Please wait a few seconds and try again!",
+                "reply": "API Rate limit (5 requests per minute) hit. Please wait a few seconds and try again!",
                 "tool_calls": []
             }
         raise e
 
     tool_calls_log = []
 
-    while _has_function_call(response.candidates[0]):
+    while _has_function_call(response):
+        function_response_parts = []
+
         for part in response.candidates[0].content.parts:
-            if not (hasattr(part, "function_call") and part.function_call):
+            if not part.function_call:
                 continue
 
             fc = part.function_call
@@ -153,33 +157,35 @@ def chat(user_message: str) -> dict:
                 "result": result,
             })
 
+            function_response_parts.append(
+                types.Part.from_function_response(
+                    name=fn_name,
+                    response={"result": result},
+                )
+            )
+
+        contents.append(response.candidates[0].content)
+        contents.append(types.Content(role="user", parts=function_response_parts))
+
         try:
-            response = chat_session.send_message(
-                response.candidates[0].content,
-                tools=TOOLS,
+            response = client.models.generate_content(
+                model="gemini-3.5-flash",
+                contents=contents,
+                config=types.GenerateContentConfig(tools=[TOOLS]),
             )
         except Exception as e:
             if "429" in str(e) or "Quota exceeded" in str(e) or "ResourceExhausted" in str(e):
-                reply = "⚠️ API Rate Limit (5 requests per min) hit mid-conversation. Here are the tools called so far."
+                reply = "API Rate limit hit mid-conversation. Here are the tools called so far."
                 return {
                     "reply": reply,
                     "tool_calls": tool_calls_log
                 }
             raise e
 
-    # Extract final text — try response.text first, fall back to parts
     reply = ""
-    try:
-        reply = response.text or ""
-    except (ValueError, AttributeError):
-        pass
+    if response.text:
+        reply = response.text
 
-    if not reply and response.candidates and response.candidates[0].content:
-        for part in response.candidates[0].content.parts:
-            if hasattr(part, "text") and part.text:
-                reply += part.text
-
-    # If the model returned no text but did call tools, build a summary
     if not reply.strip() and tool_calls_log:
         summaries = []
         for tc in tool_calls_log:
