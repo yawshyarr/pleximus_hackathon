@@ -1,0 +1,1137 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Toolbox Agent - AI Chat Interface</title>
+    <meta name="description" content="Clean, modern AI agent chat interface with tool-call visualizations for hackathon demos." />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+      /* --- BASE & THEME VARIABLES --- */
+      :root {
+        --bg-body: #090d16;
+        --bg-card: #111827;
+        --bg-chat: #0f172a;
+        --bg-input: #1e293b;
+        --border-subtle: #1e293b;
+        --border-card: #334155;
+        --border-focus: #6366f1;
+        
+        --text-primary: #f8fafc;
+        --text-secondary: #94a3b8;
+        --text-muted: #64748b;
+        
+        --user-bubble-bg: linear-gradient(135deg, #4f46e5 0%, #3730a3 100%);
+        --user-bubble-text: #ffffff;
+        
+        --agent-bubble-bg: #1e293b;
+        --agent-bubble-border: #334155;
+        --agent-bubble-text: #f1f5f9;
+        
+        --tool-chip-bg: rgba(99, 102, 241, 0.12);
+        --tool-chip-border: rgba(99, 102, 241, 0.35);
+        --tool-chip-text: #a5b4fc;
+        --tool-chip-accent: #6366f1;
+        
+        --result-card-bg: #090e1a;
+        --result-card-border: #1e293b;
+        --result-text: #38bdf8;
+        --result-success: #10b981;
+        
+        --radius-lg: 16px;
+        --radius-md: 10px;
+        --radius-sm: 6px;
+        --radius-full: 9999px;
+        
+        --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: var(--font-sans);
+        background-color: var(--bg-body);
+        color: var(--text-primary);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      /* --- APP CONTAINER --- */
+      #app-container {
+        width: 100%;
+        max-width: 900px;
+        height: 92vh;
+        max-height: 860px;
+        background: var(--bg-card);
+        border: 1px solid var(--border-card);
+        border-radius: var(--radius-lg);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.05);
+      }
+
+      /* --- HEADER --- */
+      #chat-header {
+        padding: 16px 24px;
+        background: rgba(17, 24, 39, 0.85);
+        backdrop-filter: blur(12px);
+        border-bottom: 1px solid var(--border-subtle);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        z-index: 10;
+      }
+
+      .header-info {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+
+      .agent-avatar {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #6366f1 0%, #3b82f6 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+        flex-shrink: 0;
+      }
+
+      .header-titles h1 {
+        font-size: 18px;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        background-color: var(--result-success);
+        border-radius: 50%;
+        display: inline-block;
+        box-shadow: 0 0 8px var(--result-success);
+      }
+
+      .header-titles p {
+        font-size: 13px;
+        color: var(--text-secondary);
+        margin-top: 2px;
+      }
+
+      .header-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .btn-header {
+        background: var(--bg-input);
+        border: 1px solid var(--border-subtle);
+        color: var(--text-secondary);
+        padding: 6px 12px;
+        border-radius: var(--radius-sm);
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .btn-header:hover {
+        background: #334155;
+        color: var(--text-primary);
+        border-color: var(--border-card);
+      }
+
+      /* --- PROMPT SUGGESTIONS BAR --- */
+      #suggestions-bar {
+        padding: 10px 20px;
+        background: rgba(15, 23, 42, 0.7);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        overflow-x: auto;
+        white-space: nowrap;
+        scrollbar-width: none;
+      }
+
+      #suggestions-bar::-webkit-scrollbar {
+        display: none;
+      }
+
+      .suggestions-label {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-muted);
+        margin-right: 4px;
+        flex-shrink: 0;
+      }
+
+      .chip-suggestion {
+        background: var(--bg-input);
+        border: 1px solid var(--border-subtle);
+        color: var(--text-secondary);
+        padding: 4px 10px;
+        border-radius: var(--radius-full);
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.15s ease;
+        flex-shrink: 0;
+      }
+
+      .chip-suggestion:hover {
+        background: rgba(99, 102, 241, 0.2);
+        color: #c7d2fe;
+        border-color: var(--tool-chip-accent);
+        transform: translateY(-1px);
+      }
+
+      /* --- CHAT WINDOW --- */
+      #chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        scroll-behavior: smooth;
+      }
+
+      #chat-messages::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      #chat-messages::-webkit-scrollbar-thumb {
+        background-color: var(--border-subtle);
+        border-radius: 4px;
+      }
+
+      /* --- MESSAGE ROWS & BUBBLES --- */
+      .message-row {
+        display: flex;
+        flex-direction: column;
+        animation: fadeInSlide 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+
+      .message-row.user {
+        align-items: flex-end;
+      }
+
+      .message-row.agent {
+        align-items: flex-start;
+      }
+
+      .user-bubble {
+        background: var(--user-bubble-bg);
+        color: var(--user-bubble-text);
+        padding: 12px 18px;
+        border-radius: 18px 18px 4px 18px;
+        font-size: 14.5px;
+        line-height: 1.5;
+        max-width: 80%;
+        word-break: break-word;
+        box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+      }
+
+      .agent-bubble {
+        background: var(--agent-bubble-bg);
+        border: 1px solid var(--agent-bubble-border);
+        color: var(--agent-bubble-text);
+        padding: 14px 18px;
+        border-radius: 18px 18px 18px 4px;
+        font-size: 14.5px;
+        line-height: 1.6;
+        max-width: 85%;
+        word-break: break-word;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      }
+
+      /* --- TOOL CALL CHIP (Core Visualization) --- */
+      .tool-call-card {
+        margin: 4px 0 2px 0;
+        max-width: 90%;
+        animation: fadeInSlide 0.25s ease-out forwards;
+      }
+
+      .tool-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: var(--tool-chip-bg);
+        border: 1px solid var(--tool-chip-border);
+        color: var(--tool-chip-text);
+        padding: 6px 12px;
+        border-radius: var(--radius-full);
+        font-size: 12.5px;
+        font-weight: 500;
+      }
+
+      .tool-icon {
+        font-size: 14px;
+        display: inline-block;
+      }
+
+      .tool-spinner {
+        width: 12px;
+        height: 12px;
+        border: 2px solid rgba(165, 180, 252, 0.3);
+        border-top-color: #a5b4fc;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        display: inline-block;
+      }
+
+      .tool-name {
+        font-weight: 600;
+        color: #ffffff;
+      }
+
+      .tool-params {
+        font-family: var(--font-mono);
+        font-size: 11.5px;
+        color: #c7d2fe;
+        opacity: 0.9;
+      }
+
+      /* --- TOOL RESULT CARD --- */
+      .tool-result-card {
+        margin: 4px 0 8px 0;
+        width: 100%;
+        max-width: 520px;
+        background: var(--result-card-bg);
+        border: 1px solid var(--result-card-border);
+        border-radius: var(--radius-md);
+        overflow: hidden;
+        animation: fadeInSlide 0.25s ease-out forwards;
+      }
+
+      .tool-result-header {
+        padding: 6px 12px;
+        background: rgba(30, 41, 59, 0.4);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 11px;
+        font-family: var(--font-mono);
+        color: var(--text-secondary);
+      }
+
+      .tool-result-status {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        color: var(--result-success);
+        font-weight: 600;
+      }
+
+      .tool-result-content {
+        padding: 10px 14px;
+        font-family: var(--font-mono);
+        font-size: 12.5px;
+        color: var(--result-text);
+        white-space: pre-wrap;
+        word-break: break-all;
+        line-height: 1.5;
+        max-height: 160px;
+        overflow-y: auto;
+      }
+
+      /* --- TYPING INDICATOR --- */
+      .typing-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 10px 16px;
+        background: var(--agent-bubble-bg);
+        border: 1px solid var(--agent-bubble-border);
+        border-radius: var(--radius-full);
+        width: fit-content;
+      }
+
+      .typing-dot {
+        width: 6px;
+        height: 6px;
+        background-color: var(--text-secondary);
+        border-radius: 50%;
+        animation: typingBounce 1.4s infinite ease-in-out both;
+      }
+
+      .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+      .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+      .typing-label {
+        font-size: 12px;
+        color: var(--text-secondary);
+        margin-left: 6px;
+        font-style: italic;
+      }
+
+      /* --- FOOTER INPUT BAR --- */
+      #chat-footer {
+        padding: 16px 20px;
+        background: rgba(17, 24, 39, 0.9);
+        border-top: 1px solid var(--border-subtle);
+        backdrop-filter: blur(10px);
+      }
+
+      .input-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: var(--bg-input);
+        border: 1px solid var(--border-card);
+        border-radius: var(--radius-full);
+        padding: 6px 8px 6px 18px;
+        transition: all 0.2s ease;
+      }
+
+      .input-wrapper:focus-within {
+        border-color: var(--border-focus);
+        box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25);
+      }
+
+      #user-input {
+        flex: 1;
+        background: transparent;
+        border: none;
+        outline: none;
+        color: var(--text-primary);
+        font-family: var(--font-sans);
+        font-size: 14.5px;
+      }
+
+      #user-input::placeholder {
+        color: var(--text-muted);
+      }
+
+      #send-btn {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+        border: none;
+        color: white;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.18s ease;
+        flex-shrink: 0;
+      }
+
+      #send-btn:hover {
+        transform: scale(1.05);
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+      }
+
+      #send-btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+      }
+
+      .footer-note {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 8px;
+        padding: 0 8px;
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+
+      .backend-tag {
+        color: #818cf8;
+        text-decoration: underline;
+        cursor: pointer;
+      }
+
+      /* --- MODAL FOR BACKEND INTEGRATION HELP --- */
+      #backend-modal {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.75);
+        backdrop-filter: blur(4px);
+        z-index: 100;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+      }
+
+      .modal-box {
+        background: var(--bg-card);
+        border: 1px solid var(--border-card);
+        border-radius: var(--radius-lg);
+        width: 100%;
+        max-width: 620px;
+        padding: 24px;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+      }
+
+      .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 14px;
+      }
+
+      .modal-header h2 {
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--text-primary);
+      }
+
+      .modal-close {
+        background: none;
+        border: none;
+        color: var(--text-muted);
+        font-size: 20px;
+        cursor: pointer;
+      }
+
+      .modal-code {
+        background: #090e1a;
+        border: 1px solid var(--border-subtle);
+        border-radius: var(--radius-sm);
+        padding: 12px;
+        font-family: var(--font-mono);
+        font-size: 12px;
+        color: #a5f3fc;
+        overflow-x: auto;
+        margin: 12px 0;
+      }
+
+      /* --- ANIMATIONS --- */
+      @keyframes fadeInSlide {
+        from {
+          opacity: 0;
+          transform: translateY(6px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @keyframes spin {
+        100% { transform: rotate(360deg); }
+      }
+
+      @keyframes typingBounce {
+        0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+        40% { transform: scale(1); opacity: 1; }
+      }
+
+      @media (max-width: 640px) {
+        body {
+          padding: 0;
+        }
+        #app-container {
+          height: 100vh;
+          max-height: none;
+          border-radius: 0;
+          border: none;
+        }
+        .header-titles p {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- APP CONTAINER -->
+    <div id="app-container">
+      
+      <!-- HEADER -->
+      <header id="chat-header">
+        <div class="header-info">
+          <div class="agent-avatar" aria-label="Toolbox Agent Avatar">🤖</div>
+          <div class="header-titles">
+            <h1>Toolbox Agent <span class="status-dot" title="Agent Online"></span></h1>
+            <p>Ask me to calculate, check weather, or convert units</p>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button id="clear-chat-btn" class="btn-header" title="Clear conversation history">
+            <span>🗑️</span> Clear
+          </button>
+          <button id="info-btn" class="btn-header" title="View Python Backend Wiring Guide">
+            <span>🔌</span> API Hook
+          </button>
+        </div>
+      </header>
+
+      <!-- SUGGESTION CHIPS -->
+      <div id="suggestions-bar">
+        <span class="suggestions-label">Try Prompt:</span>
+        <button class="chip-suggestion" data-prompt="Calculate 12 * (45 + 18)">📐 12 * (45 + 18)</button>
+        <button class="chip-suggestion" data-prompt="What is the weather in Tokyo?">⛅ Weather in Tokyo</button>
+        <button class="chip-suggestion" data-prompt="Convert 50 miles to kilometers">🔄 50 miles to km</button>
+        <button class="chip-suggestion" data-prompt="Count words in 'Artificial Intelligence is revolutionizing workflows'">📝 Count words in text</button>
+      </div>
+
+      <!-- CHAT MESSAGE THREAD -->
+      <div id="chat-messages" role="log" aria-live="polite">
+        <!-- Messages will be rendered dynamically here -->
+      </div>
+
+      <!-- FOOTER / INPUT BAR -->
+      <footer id="chat-footer">
+        <form id="chat-form" onsubmit="return false;">
+          <div class="input-wrapper">
+            <input 
+              type="text" 
+              id="user-input" 
+              placeholder="Ask Toolbox Agent to compute, convert, or check weather..." 
+              autocomplete="off"
+            />
+            <button type="submit" id="send-btn" aria-label="Send Message">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+              </svg>
+            </button>
+          </div>
+        </form>
+        <div class="footer-note">
+          <span>Frontend demo ready for Python backend</span>
+          <span class="backend-tag" id="open-modal-link">FastAPI / Flask Connection Hook</span>
+        </div>
+      </footer>
+    </div>
+
+    <!-- BACKEND WIRING MODAL -->
+    <div id="backend-modal">
+      <div class="modal-box">
+        <div class="modal-header">
+          <h2>🔌 How to Connect to Python Backend</h2>
+          <button class="modal-close" id="close-modal-btn">&times;</button>
+        </div>
+        <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.5;">
+          To connect this UI to your real Python agent backend (FastAPI / Flask / LangChain / LlamaIndex), set <code>USE_MOCK_BACKEND = false</code> in the JavaScript block and send a POST request.
+        </p>
+        <pre class="modal-code"><code># Python FastAPI Example (server.py)
+from fastapi import FastAPI
+from pydantic import BaseModel
+
+app = FastAPI()
+
+class ChatRequest(BaseModel):
+    message: str
+
+@app.post("/chat")
+def chat_endpoint(req: ChatRequest):
+    # Run your agent / tools here:
+    return {
+        "tool_call": {"name": "calculator", "params": "12 * 7"},
+        "tool_result": "84",
+        "reply": "The calculated result of 12 * 7 is 84."
+    }</code></pre>
+        <button id="close-modal-bottom-btn" class="btn-header" style="width: 100%; justify-content: center; padding: 10px; margin-top: 8px;">Got it, back to demo</button>
+      </div>
+    </div>
+
+    <!-- VANILLA JAVASCRIPT LOGIC -->
+    <script>
+      /**
+       * TOOLBOX AGENT CHAT INTERFACE
+       * Vanilla JavaScript - Zero external frameworks
+       */
+
+      // ==========================================
+      // 1. CONFIGURATION & STATE
+      // ==========================================
+      
+      // Set this to false when wiring up your Python backend!
+      const USE_MOCK_BACKEND = false;
+      const PYTHON_BACKEND_URL = "http://localhost:5003/chat";
+
+      const chatMessages = document.getElementById("chat-messages");
+      const chatForm = document.getElementById("chat-form");
+      const userInput = document.getElementById("user-input");
+      const sendBtn = document.getElementById("send-btn");
+      const clearChatBtn = document.getElementById("clear-chat-btn");
+      const suggestionChips = document.querySelectorAll(".chip-suggestion");
+      
+      // Modal controls
+      const backendModal = document.getElementById("backend-modal");
+      const infoBtn = document.getElementById("info-btn");
+      const openModalLink = document.getElementById("open-modal-link");
+      const closeModalBtn = document.getElementById("close-modal-btn");
+      const closeModalBottomBtn = document.getElementById("close-modal-bottom-btn");
+
+      let isProcessing = false;
+
+      // ==========================================
+      // 2. MODULAR RENDERING FUNCTIONS
+      // ==========================================
+
+      /**
+       * Renders a user message bubble (right-aligned)
+       */
+      function renderUserMessage(text) {
+        const row = document.createElement("div");
+        row.className = "message-row user";
+        
+        const bubble = document.createElement("div");
+        bubble.className = "user-bubble";
+        bubble.textContent = text;
+
+        row.appendChild(bubble);
+        chatMessages.appendChild(row);
+        scrollToBottom();
+      }
+
+      /**
+       * Renders the animated typing indicator
+       */
+      function renderTypingIndicator() {
+        // Prevent duplicate indicators
+        removeTypingIndicator();
+
+        const row = document.createElement("div");
+        row.className = "message-row agent";
+        row.id = "typing-indicator-row";
+
+        const indicator = document.createElement("div");
+        indicator.className = "typing-indicator";
+        indicator.innerHTML = `
+          <div class="typing-dot"></div>
+          <div class="typing-dot"></div>
+          <div class="typing-dot"></div>
+          <span class="typing-label">Toolbox agent is thinking...</span>
+        `;
+
+        row.appendChild(indicator);
+        chatMessages.appendChild(row);
+        scrollToBottom();
+      }
+
+      /**
+       * Removes the typing indicator
+       */
+      function removeTypingIndicator() {
+        const indicator = document.getElementById("typing-indicator-row");
+        if (indicator) {
+          indicator.remove();
+        }
+      }
+
+      /**
+       * Renders a tool call badge/chip (e.g. 🔧 Calling: calculator(expression='12*7'))
+       */
+      function renderToolCall(toolName, params) {
+        const row = document.createElement("div");
+        row.className = "message-row agent tool-call-card";
+
+        const toolIcons = {
+          calculate: "📐",
+          get_weather: "⛅",
+          convert_units: "🔄",
+          text_utility: "📝",
+          default: "⚙️"
+        };
+        const icon = toolIcons[toolName] || toolIcons.default;
+
+        const chip = document.createElement("div");
+        chip.className = "tool-chip";
+        chip.innerHTML = `
+          <span class="tool-icon">${icon}</span>
+          <span>Calling: <strong class="tool-name">${escapeHtml(toolName)}</strong>(<span class="tool-params">${escapeHtml(params)}</span>)</span>
+          <span class="tool-spinner"></span>
+        `;
+
+        row.appendChild(chip);
+        chatMessages.appendChild(row);
+        scrollToBottom();
+        return row;
+      }
+
+      /**
+       * Renders the tool result card (monospace output)
+       */
+      function renderToolResult(result, isError = false) {
+        const row = document.createElement("div");
+        row.className = "message-row agent";
+
+        const card = document.createElement("div");
+        card.className = "tool-result-card";
+
+        const statusColor = isError ? "#ef4444" : "var(--result-success)";
+        const statusText = isError ? "✖ Tool Execution Error" : "✓ Tool Output";
+
+        // Pretty print if result is JSON or object
+        let displayResult = typeof result === "object" ? JSON.stringify(result, null, 2) : String(result);
+
+        card.innerHTML = `
+          <div class="tool-result-header">
+            <span class="tool-result-status" style="color: ${statusColor};">
+              <span>●</span> ${statusText}
+            </span>
+            <span>stdout</span>
+          </div>
+          <div class="tool-result-content">${escapeHtml(displayResult)}</div>
+        `;
+
+        row.appendChild(card);
+        chatMessages.appendChild(row);
+        scrollToBottom();
+      }
+
+      /**
+       * Renders the agent's final natural language response (left-aligned)
+       */
+      function renderAgentReply(text) {
+        const row = document.createElement("div");
+        row.className = "message-row agent";
+
+        const bubble = document.createElement("div");
+        bubble.className = "agent-bubble";
+        bubble.textContent = text;
+
+        row.appendChild(bubble);
+        chatMessages.appendChild(row);
+        scrollToBottom();
+      }
+
+      /**
+       * Helper to safely escape HTML strings
+       */
+      function escapeHtml(str) {
+        if (!str) return "";
+        return str
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      }
+
+      /**
+       * Scrolls the message window to the latest entry
+       */
+      function scrollToBottom() {
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      }
+
+      // ==========================================
+      // 3. AGENT DISPATCH & BACKEND HOOK
+      // ==========================================
+
+      /**
+       * MAIN HANDLER: Handles user message submission.
+       * Replace or modify this function when connecting your Python backend!
+       */
+      async function handleUserMessage(text) {
+        if (!text || text.trim() === "" || isProcessing) return;
+
+        const query = text.trim();
+        userInput.value = "";
+        setControlsDisabled(true);
+
+        // 1. Show user message in chat
+        renderUserMessage(query);
+
+        // 2. Show thinking indicator
+        renderTypingIndicator();
+
+        if (USE_MOCK_BACKEND) {
+          // ===============================================================
+          // FRONTEND MOCK MODE (For standalone hackathon demos)
+          // ===============================================================
+          await simulateMockAgentFlow(query);
+        } else {
+          // ===============================================================
+          // REAL PYTHON BACKEND MODE
+          // ===============================================================
+          try {
+            const response = await fetch(PYTHON_BACKEND_URL, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ message: query })
+            });
+
+            if (!response.ok) {
+              throw new Error(`Server error: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            removeTypingIndicator();
+
+            // Render each tool call with animated delays
+            for (const tc of (data.tool_calls || [])) {
+              renderToolCall(tc.tool, JSON.stringify(tc.args));
+              await delay(400);
+              removeTypingIndicator();
+              renderToolResult(tc.result);
+              await delay(300);
+            }
+
+            // Final agent natural-language reply
+            renderAgentReply(data.reply || "Done.");
+
+          } catch (error) {
+            removeTypingIndicator();
+            renderAgentReply("⚠️ Could not reach Python backend: " + error.message);
+          }
+        }
+
+        setControlsDisabled(false);
+        userInput.focus();
+      }
+
+      // ==========================================
+      // 4. MOCK AGENT SIMULATION LOGIC
+      // ==========================================
+
+      /**
+       * Simulates realistic tool detection, execution delay, and synthesis
+       */
+      async function simulateMockAgentFlow(query) {
+        const lower = query.toLowerCase();
+
+        // 1. Thinking pause
+        await delay(600);
+        removeTypingIndicator();
+
+        // --- TOOL 1: CALCULATOR ---
+        const mathMatch = query.match(/(\d+[\s\+\-\*\/\^\(\)\.\%]+\d+)/) || 
+                          lower.includes("calculate") || 
+                          lower.includes("compute") || 
+                          lower.includes("multiply") || 
+                          lower.includes("divide");
+                          
+        if (mathMatch) {
+          // Extract expression or default to sample
+          let expression = query.replace(/[a-zA-Z\?]/g, "").trim();
+          if (!expression || expression.length < 3) expression = "12 * (45 + 18)";
+          
+          renderToolCall("calculator", `expression='${expression}'`);
+          renderTypingIndicator();
+          await delay(800);
+          removeTypingIndicator();
+
+          let calcResult;
+          try {
+            // Safe evaluation for math demo
+            const sanitized = expression.replace(/[^0-9\+\-\*\/\.\(\)\s]/g, "");
+            calcResult = Function(`"use strict"; return (${sanitized})`)();
+          } catch (e) {
+            calcResult = 756; // fallback demo value
+          }
+
+          renderToolResult({
+            expression: expression,
+            result: calcResult,
+            execution_time_ms: 1.42
+          });
+          
+          await delay(450);
+          renderAgentReply(`The calculated value of ${expression} is **${calcResult}**.`);
+          return;
+        }
+
+        // --- TOOL 2: WEATHER ---
+        if (lower.includes("weather") || lower.includes("forecast") || lower.includes("temperature") || lower.includes("rain")) {
+          // Extract city
+          let city = "Tokyo";
+          const cities = ["tokyo", "london", "new york", "san francisco", "paris", "berlin", "mumbai", "sydney", "toronto", "singapore"];
+          for (const c of cities) {
+            if (lower.includes(c)) {
+              city = c.split(" ").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+              break;
+            }
+          }
+
+          renderToolCall("weather", `location='${city}', units='metric'`);
+          renderTypingIndicator();
+          await delay(900);
+          removeTypingIndicator();
+
+          const weatherMockData = {
+            location: `${city}`,
+            condition: "Partly Cloudy ⛅",
+            temperature: "19°C (66°F)",
+            humidity: "62%",
+            wind: "14 km/h NW",
+            uv_index: 4
+          };
+
+          renderToolResult(weatherMockData);
+          await delay(500);
+          renderAgentReply(`Current weather in ${city} is ${weatherMockData.condition} at ${weatherMockData.temperature} with ${weatherMockData.humidity} humidity.`);
+          return;
+        }
+
+        // --- TOOL 3: UNIT CONVERTER ---
+        if (lower.includes("convert") || lower.includes("miles") || lower.includes("km") || lower.includes("celsius") || lower.includes("fahrenheit") || lower.includes("kg") || lower.includes("lbs")) {
+          let fromVal = 50;
+          let fromUnit = "miles";
+          let toUnit = "kilometers";
+
+          if (lower.includes("mile")) {
+            fromVal = parseFloat(query.match(/\d+/) || 50);
+            fromUnit = "miles";
+            toUnit = "kilometers";
+            var converted = (fromVal * 1.60934).toFixed(2);
+          } else if (lower.includes("kg") || lower.includes("kilo")) {
+            fromVal = parseFloat(query.match(/\d+/) || 10);
+            fromUnit = "kg";
+            toUnit = "lbs";
+            var converted = (fromVal * 2.20462).toFixed(2);
+          } else {
+            var converted = "80.47";
+          }
+
+          renderToolCall("unit_converter", `value=${fromVal}, from_unit='${fromUnit}', to_unit='${toUnit}'`);
+          renderTypingIndicator();
+          await delay(750);
+          removeTypingIndicator();
+
+          renderToolResult({
+            input: `${fromVal} ${fromUnit}`,
+            output: `${converted} ${toUnit}`,
+            conversion_factor: fromUnit === "miles" ? 1.60934 : 2.20462
+          });
+
+          await delay(400);
+          renderAgentReply(`${fromVal} ${fromUnit} is exactly equal to **${converted} ${toUnit}**.`);
+          return;
+        }
+
+        // --- TOOL 4: WORD / TEXT UTILITY ---
+        if (lower.includes("count") || lower.includes("word") || lower.includes("text") || lower.includes("character") || lower.includes("length")) {
+          // Extract quoted text or use query
+          const targetText = query.replace(/count|words|in|characters|the|text/gi, "").trim() || "Artificial Intelligence";
+          
+          renderToolCall("word_utility", `action='text_stats', text='${targetText.slice(0, 30)}...'`);
+          renderTypingIndicator();
+          await delay(700);
+          removeTypingIndicator();
+
+          const words = targetText.split(/\s+/).filter(Boolean).length;
+          const chars = targetText.length;
+
+          renderToolResult({
+            word_count: words,
+            character_count: chars,
+            uppercase_sample: targetText.toUpperCase(),
+            reading_time_sec: Math.max(1, Math.round(words / 3))
+          });
+
+          await delay(450);
+          renderAgentReply(`The text contains **${words} words** and **${chars} characters**.`);
+          return;
+        }
+
+        // --- GENERAL FALLBACK ASSISTANT ---
+        renderTypingIndicator();
+        await delay(500);
+        removeTypingIndicator();
+        renderAgentReply(`I can assist you by calling tools! Try asking me to compute a math equation (e.g. \`12 * 7\`), check weather in a city (\`Weather in London\`), convert units (\`50 miles to km\`), or count words in a sentence.`);
+      }
+
+      function delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+      }
+
+      function setControlsDisabled(disabled) {
+        isProcessing = disabled;
+        sendBtn.disabled = disabled;
+        userInput.disabled = disabled;
+      }
+
+      // ==========================================
+      // 5. EVENT LISTENERS & INITIAL DEMO SEED
+      // ==========================================
+
+      chatForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        handleUserMessage(userInput.value);
+      });
+
+      userInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          handleUserMessage(userInput.value);
+        }
+      });
+
+      suggestionChips.forEach(chip => {
+        chip.addEventListener("click", () => {
+          const prompt = chip.getAttribute("data-prompt");
+          if (prompt) {
+            userInput.value = prompt;
+            handleUserMessage(prompt);
+          }
+        });
+      });
+
+      clearChatBtn.addEventListener("click", () => {
+        chatMessages.innerHTML = "";
+        seedInitialDemoMessages();
+      });
+
+      // Modal triggers
+      function toggleModal(show) {
+        backendModal.style.display = show ? "flex" : "none";
+      }
+      infoBtn.addEventListener("click", () => toggleModal(true));
+      openModalLink.addEventListener("click", () => toggleModal(true));
+      closeModalBtn.addEventListener("click", () => toggleModal(false));
+      closeModalBottomBtn.addEventListener("click", () => toggleModal(false));
+      backendModal.addEventListener("click", (e) => {
+        if (e.target === backendModal) toggleModal(false);
+      });
+
+      // Initial Demo Conversation
+      function seedInitialDemoMessages() {
+        // Welcome message
+        renderAgentReply("👋 Welcome to Toolbox Agent! I'm an AI assistant equipped with real-time tools. Try asking me a calculation, checking weather, or converting units to see live tool calls in action.");
+
+        // Pre-seeded demo tool execution
+        renderUserMessage("What is 12 * 7?");
+        renderToolCall("calculator", "expression='12 * 7'");
+        renderToolResult({ expression: "12 * 7", result: 84, status: "success" });
+        renderAgentReply("The result of 12 * 7 is **84**.");
+      }
+
+      // Initialize on DOM load
+      window.addEventListener("DOMContentLoaded", () => {
+        seedInitialDemoMessages();
+        userInput.focus();
+      });
+    </script>
+  </body>
+</html>
+
