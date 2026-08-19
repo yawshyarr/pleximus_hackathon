@@ -54,3 +54,21 @@ curl http://localhost:5001/health
 Then open `index.html` directly in your browser — it connects to the running backend automatically.
 
 ## 💬 Example Prompts
+
+
+## ✅ Edge Cases Handled
+
+- Division by zero / invalid math expressions
+- Unrecognized city names
+- Invalid or mismatched unit categories (e.g. converting kg to meters)
+- Empty or malformed API responses
+
+## 👤 Author
+
+**Yash Joshi** — built for the Pleximus Inc. AI Hackathon
+
+<div align="center">
+
+⭐ *If you found this project interesting, consider giving it a star!*
+
+</div>
